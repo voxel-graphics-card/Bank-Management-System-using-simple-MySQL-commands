@@ -1,7 +1,7 @@
 """
 Banking Transaction Management System
 
-Author(s): Debargha Bose
+Author(s): Debargha Bose,Ashmit Tiwari,Drishti Kumari
 
 Overview:
 This system manages user bank accounts, allowing users to perform transactions such as deposits and withdrawals. It tracks account balances and maintains a transaction history in a MySQL database.
@@ -313,13 +313,16 @@ Date and time of transactions: {r[5]}\n\n""")
         return
 
 def feedback_viewer():
+    db, cur = con1()
     cur.execute("SELECT * FROM FEEDBACK")
-    r=cur.execute
+    r=cur.fetchall()
     if is_nested(r):
         for i in r:
-            print(i)
+            print("Account number:",i[0])
+            print("Feedback given:",i[1])
     else:
-        print(r)
+        print("Account number:",r[0])
+        print("Feedback given:",r[1])
 
 ### User Menu stuff goes here ###
 
