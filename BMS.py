@@ -1,8 +1,6 @@
 """
 Banking Transaction Management System
 
-Author(s): Debargha Bose,Ashmit Tiwari,Drishti Kumari
-
 Overview:
 This system manages user bank accounts, allowing users to perform transactions such as deposits and withdrawals. It tracks account balances and maintains a transaction history in a MySQL database.
 
