@@ -377,31 +377,59 @@ def add_user():
 
 
 def update_user():
-    db, cur = con1()  # unpacking the con1() function
-    
+    db, cur = con1()  # Unpacking the con1() function
+
     acc = int(input("Enter account number: "))
-    n = input("Enter new Name: ")
-    e = input("Enter new E.Mail address: ")
-    a = input("Enter new address: ")
-    pnum = int(input("Enter new phone number: "))
     
-    if check_existance(acc) is True:
-        try:
-            qa = "UPDATE USERS SET NAME=%s, E_MAIL=%s, ADDRESS=%s, NUMBER=%s WHERE ACCOUNT_NUMBER=%s"
-            cur.execute(qa, (n, e, a, pnum, acc))
-            
-            # Commit the changes to the database
-            db.commit()
-            
-            print("User information updated successfully.")
-            
-        except Exception as e:
-            print(f"An error occurred: {e}")
-        finally:
-            db_close(db, cur)
-    else:
-        print("Account not found")
+    # Check if the account exists
+    if not check_existance(acc):
+        print("Account not found.")
         return
+    
+    # Prompt the user for new details (allowing empty inputs)
+    n = input("Enter new Name (leave blank to keep unchanged): ").strip()
+    e = input("Enter new E.Mail address (leave blank to keep unchanged): ").strip()
+    a = input("Enter new Address (leave blank to keep unchanged): ").strip()
+    pnum = input("Enter new Phone number (leave blank to keep unchanged): ").strip()
+
+    if pnum:
+        try:
+            pnum = int(pnum)
+        except Exception as q:
+            print(q)
+
+    # Create a dictionary to store the fields to be updated
+    updates = {}
+    if n:
+        updates["NAME"] = n
+    if e:
+        updates["E_MAIL"] = e
+    if a:
+        updates["ADDRESS"] = a
+    if pnum:
+        updates["NUMBER"] = pnum
+
+    # If no updates are provided, inform the user and exit
+    if not updates:
+        print("No updates provided. Exiting.")
+        return
+
+    # Dynamically building the SQL query
+    try:
+        set_clause = ", ".join([f"{key}=%s" for key in updates.keys()])
+        query = f"UPDATE USERS SET {set_clause} WHERE ACCOUNT_NUMBER=%s"
+        values = list(updates.values()) + [acc]
+
+        # Execute the query
+        cur.execute(query, values)
+        db.commit()
+        
+        print("User information updated successfully.")
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    finally:
+        db_close(db, cur)
+
 
 
 def give_feedback():
@@ -573,20 +601,20 @@ def umenu():#User menu
     while True:
         print("*"*57)
         print(r"""
-                    //===========\\
+                    //========\\
                      ||USER MENU||
-                    \\===========//
+                    \\========//
 
                     """)
         print("*"*57)
-        print("""\t\t 1. Add user
-                 2. View your bank account data
-                 3. Update profile
-                 4. Apply for loan 
-                 5. Give feedback
-                 6. View loan status
-                 7. widthdraw or deposit
-                 8. Exit""")
+        print("""1. Add user
+2. View your bank account data
+3. Update profile
+4. Apply for loan 
+5. Give feedback
+6. View loan status
+7. widthdraw or deposit
+8. Exit""")
         print("Enter the numbers (1,2,3,4,5,6,7,8) to choose...")
         ch=input("Enter choice: ")
 
@@ -621,9 +649,9 @@ def admenu():
     while True:
         print("*"*57)
         print(r"""
-                    //============\\
+                    //=========\\
                      ||ADMIN MENU||
-                    \\============//
+                    \\=========//
                     """)
         print("*"*57)
         print("""1. Delete user
