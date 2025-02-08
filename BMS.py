@@ -194,7 +194,7 @@ def delete_user():
 def loan_conf():
     db, cur = con1()
     try:
-        cur.execute("SELECT * FROM LOAN where APPROVAL = NO")
+        cur.execute("""SELECT * FROM LOAN where APPROVAL = "NO" """)
         l=tuple(cur.fetchall())#returns tuples inside of a greater list which is
                                # then converted to nested tuple
         if l!=tuple():
@@ -359,7 +359,7 @@ def add_user():
             else:
                 v+=i
         p=v.split('@')
-        if p[1]!="gmail.com":#(Ends)
+        if p[1]!="gmail.com":#(Ends with)
             print("Email not valid error")
         else:
             qa = "INSERT INTO USERS (NAME, ADDRESS, E_MAIL, NUMBER, BALANCE) VALUES (%s, %s, %s, %s, %s)"
@@ -398,9 +398,9 @@ def update_user():
         except Exception as q:
             print(q)
 
-    # Create a dictionary to store the fields to be updated
+    # Creating a dictionary to store the fields to be updated
     updates = {}
-    if n:
+    if n:# if n is given
         updates["NAME"] = n
     if e:
         updates["E_MAIL"] = e
@@ -420,7 +420,7 @@ def update_user():
         query = f"UPDATE USERS SET {set_clause} WHERE ACCOUNT_NUMBER=%s"
         values = list(updates.values()) + [acc]
 
-        # Execute the query
+        # Executing the query
         cur.execute(query, values)
         db.commit()
         
@@ -491,45 +491,68 @@ Total Repayment value after {i[6]} years: {i[5]}\n\n""")
     db_close(db, cur)
 
 def acc_transaction(i):
+    transaction_info = {}
     
-    db,cur=con1()
+    db, cur = con1()
     
-    cur.execute("select BALANCE from USERS where ACCOUNT_NUMBER=%s",(i,))
+    # Fetch current balance
+    cur.execute("SELECT BALANCE FROM USERS WHERE ACCOUNT_NUMBER = %s", (i,))
+    result = cur.fetchone()
     
-    ba = cur.fetchone()[0]
-    
-    print(f"Remaining balance is: {ba}")
-    
-    w=float(input("Enter widthdral ammount: "))
-    
-    print(f"Widthdral amount: {w}")
-    
-    d=float(input("Enter deposit amount: "))
-    
-    print(f"Deposit amount: {d}")
-    
-    ba=ba-w+d
-    
-    q="INSERT INTO widthdral_and_deposit (USER_ACCOUNT_NUMBER,WITHDRAWL,DEPOSIT,Date,REMAINING_BALANCE) VALUES(%s,%s,%s,NOW(),%s)"
-    cur.execute(q,(i,w,d,ba))
-    cur.execute("UPDATE USERS SET BALANCE=%s WHERE ACCOUNT_NUMBER=%s",(ba,i))
-    print("Balance has been updated")
-    print("New balance is:",ba)
-    
-    
-    if ba<0:
-        print("balance cannot be less than 0 or zero")
-        ba=ba*(-1)
-        cur.execute("UPDATE USERS SET BALANCE=%s WHERE ACCOUNT_NUMBER=%s",(ba,i))
-        print("reverted transaction")
-        
-    elif ba==0:
-        
-        print("balance is now equal to zero or 0")
-        
-    db.commit()
-    
-    db_close(db,cur)
+    if result is None:
+        print("Account not found.")
+        return
+
+    ba = result[0]
+    print(f"Remaining balance: {ba}")
+
+    try:
+        w_input = input("Enter withdrawal amount (leave blank for no withdrawal): ").strip()
+        d_input = input("Enter deposit amount (leave blank for no deposit): ").strip()
+
+        w = float(w_input) if w_input else 0
+        d = float(d_input) if d_input else 0
+
+        print(f"Withdrawal amount: {w}")
+        print(f"Deposit amount: {d}")
+
+        if w == 0 and d == 0:
+            print("No transaction performed.")
+            return
+
+        # Check if withdrawal is possible
+        new_balance = ba - w + d
+        if new_balance < 0:
+            print("Transaction failed: Insufficient balance.")
+            return
+
+        # Update transaction info
+        if w > 0:
+            transaction_info["WITHDRAWL"] = w
+        if d > 0:
+            transaction_info["DEPOSIT"] = d
+
+        # Update withdrawal_and_deposit table
+        if transaction_info:
+            set_clause = ", ".join([f"{key}=%s" for key in transaction_info.keys()])
+            query = f"UPDATE widthdral_and_deposit SET {set_clause} WHERE USER_ACCOUNT_NUMBER = %s"
+            values = list(transaction_info.values()) + [i]
+            cur.execute(query, values)
+
+        # Update user balance
+        cur.execute("UPDATE USERS SET BALANCE = %s WHERE ACCOUNT_NUMBER = %s", (new_balance, i))
+
+        db.commit()
+        print("Transaction successful. New balance:", new_balance)
+
+    except ValueError:
+        print("Invalid input. Please enter a valid number.")
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+    finally:
+        db_close(db, cur)
 
 def balance_management():
     
@@ -602,7 +625,7 @@ def umenu():#User menu
         print("*"*57)
         print(r"""
                     //========\\
-                     ||USER MENU||
+                    || USER_MENU ||
                     \\========//
 
                     """)
@@ -649,9 +672,9 @@ def admenu():
     while True:
         print("*"*57)
         print(r"""
-                    //=========\\
-                     ||ADMIN MENU||
-                    \\=========//
+                    //==========\\
+                    ||  ADMIN_MENU  ||
+                    \\==========//
                     """)
         print("*"*57)
         print("""1. Delete user
@@ -689,6 +712,7 @@ def mmenu():
             else:
                 print("Invalid credenti@ls!")
         elif ch=='3':
+            print("Bye!")
             break
 
 
@@ -706,9 +730,9 @@ try:#Tries to read from the file named "confirmation.txt" which will help us det
             con1()#only connect to the database as this program has run once atleast
             mmenu()
 
-except FileNotFoundError as err:#if the file does not exist this except block code will make the file
-    print(f"""File was not found, and the error was {err}...
-            Resolving the error""")#and run the main connection function
+except FileNotFoundError:#if the file does not exist this except block code will make the file
+    print("""File was not found...
+Resolving the error""")#and run the main connection function
     with open(file,'w+') as f:
         f.write("c")
         print("Trying to establish connection...(error resolved)")
