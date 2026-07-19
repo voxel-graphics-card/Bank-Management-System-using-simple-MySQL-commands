@@ -1,30 +1,18 @@
 """
 Banking Transaction Management System
-
 Overview:
-This system manages user bank accounts, allowing users to perform transactions such as deposits and withdrawals. It tracks account balances and maintains a transaction history in a MySQL database.
-
+This system manages user bank accounts, allowing users to perform transactions such as deposits and withdrawals. It tracks account balances and maintains a transaction history in a MySQL database. It also supports feedback submission and loan applications, with a separate admin menu for approvals and account management.
 Requirements:
 - Python 3.x
 - MySQL Server
 - mysql-connector-python (Install with: pip install mysql-connector-python)
-
 Database Setup:
-Before running the application, ensure you have a MySQL database set up with the following tables:
-
-1. USERS:
-   - ACCOUNT_NUMBER (INT, PRIMARY KEY)
-   - BALANCE (FLOAT)
-
-2. widthdral_and_deposit:
-   - USER_ACCOUNT_NUMBER (INT, FOREIGN KEY references USERS)
-   - WITHDRAWL (FLOAT)
-   - DEPOSIT (FLOAT)
-   - Date (DATETIME)
-   - REMAINING_BALANCE (FLOAT)
-
+The program creates the 'BANK' database and all required tables automatically on first run (see conx()). Tables:
+1. USERS - ACCOUNT_NUMBER (PK, auto-increment), NAME, E_MAIL, ADDRESS, NUMBER, BALANCE, DATE_OF_OPENING
+2. FEEDBACK - USER_ACCOUNT_NUMBER (PK), FEEDBACK
+3. widthdral_and_deposit - USER_ACCOUNT_NUMBER, WITHDRAWL, DEPOSIT, Date_and_time, REMAINING_BALANCE
+4. LOAN - USER_ACCOUNT_NUMBER (PK), APPROVAL, LOAN_AMOUNT, LOAN_BEARER, INTREST_RATE, REPAYMENT, TIME_IN_YEARS, DATE_OF_CONFIRMATION
 Functions:
-
 1. acc_transaction(i)
    - Handles withdrawals and deposits for the specified user account.
    - Parameters:
@@ -34,7 +22,6 @@ Functions:
      - Retrieves the current balance for the account.
      - Prompts the user for withdrawal and deposit amounts.
      - Updates the balance and records the transaction in the database.
-
 2. balance_management()
    - Manages user interactions for balance inquiries and transaction history.
    - Returns: None
@@ -42,38 +29,26 @@ Functions:
      - Prompts the user for their account number.
      - Checks if the account exists.
      - Displays transaction history or prompts for new transactions.
-
 Error Handling:
 Basic error handling is implemented to manage exceptions during database operations.
-
-
 Future Improvements:
 - Implement user authentication.
 - Add transaction summary reports.
 - Enhance the user interface.
-
 """
-
-
-
 import mysql.connector as conex
-
-
 h="localhost"#host maintaing the database
 u="root"#username
 p="1234"#password
 file="confirmation.txt"#file that this program will use to know if it has run once atleast or not
-
 def conx(): ###Will use only the first time the code runs as the other queries in this function[conx()]
             ### are not required to run everytime
-
     db=conex.connect(host=h,user=u,password=p)#initialization of the connection
     cur=db.cursor()#the cursor
     
     q1="create database if not exists BANK"
     cur.execute(q1)
     cur.execute("USE BANK")
-
     
     q2="""create table if not exists USERS (
             ACCOUNT_NUMBER INT AUTO_INCREMENT PRIMARY KEY,
@@ -85,7 +60,6 @@ def conx(): ###Will use only the first time the code runs as the other queries i
             DATE_OF_OPENING DATE
         )"""                    ###AUTO_INCREMENT increments or makes new ACCOUNT_NUMBER(s) automatically
     cur.execute(q2)             ### whenever a user gets added in the database
-
     q3="""create table if not exists FEEDBACK (
             USER_ACCOUNT_NUMBER INT PRIMARY KEY,
             FEEDBACK varchar(255)
@@ -100,8 +74,6 @@ def conx(): ###Will use only the first time the code runs as the other queries i
             REMAINING_BALANCE FLOAT
         )"""
     cur.execute(q4)
-
-
     q5="""CREATE table if not exists LOAN (
             USER_ACCOUNT_NUMBER INT PRIMARY KEY,
             APPROVAL VARCHAR(100) DEFAULT "NO",
@@ -113,84 +85,60 @@ def conx(): ###Will use only the first time the code runs as the other queries i
             DATE_OF_CONFIRMATION DATE
         )"""
     cur.execute(q5)
-
 def con1():#will use everytime the code runs for connecting to the database
     db=conex.connect(host=h,user=u,password=p)#initialization of the connection
     cur=db.cursor()#cursor object creation
     cur.execute("USE BANK")
     return db,cur
-
-
 def db_close(db,cur):
     cur.close()
     db.close()
     return
-
 def acc_existence():#for checking existence of users(no specifics)
     db, cur=con1()
     cur.execute("select ACCOUNT_NUMBER FROM USERS")
     a=cur.fetchall()
     for i in a:
         return (True,i)
-
-def is_nested(tup):
-    for item in tup:
-        if type(item) == tuple:  # Using `type()`
-            return True
-    return False
-
-
 def check_existance(acc):#for checking existence of users(of user accounts)
     db, cur=con1()
     cur.execute("SELECT * FROM USERS WHERE ACCOUNT_NUMBER = %s", (acc,))
     user_data = cur.fetchone()
+    db_close(db, cur)
     
     if user_data is None:
         print("Account number not found.")
-        db_close(db, cur)
         return
     else:
         return (True,user_data)
-
 ### Admin menu stuff goes here ###
-
-
 def delete_user():
     db, cur = con1()
     try:
-        # Check if account number exists
         cur.execute("SELECT * FROM USERS")
-        user_data = cur.fetchone()
-
-        if user_data is None:
+        users = cur.fetchall()
+        if not users:
             print("There are no records yet...")
             return
-
-        elif user_data:
+        for user_data in users:
             print("Account number",user_data[0])
             print("Name:",user_data[1])
             print("E-mail:",user_data[2])
             print("Address:",user_data[3])
             print("Phone number:",user_data[4])
             print("Balance:",user_data[5])
-            user_data = cur.fetchone()
-            print("These are all the records")
-            a=int(input("Enter account number that is to be deleted: "))
-
-            cur.execute("DELETE FROM USERS WHERE ACCOUNT_NUMBER = %s",(a,))
-            db.commit()
-            print("Account has been deleted")
-        else:
-            print("something did not work as intended...")
+            print()
+        print("These are all the records")
+        a=int(input("Enter account number that is to be deleted: "))
+        cur.execute("DELETE FROM USERS WHERE ACCOUNT_NUMBER = %s",(a,))
+        db.commit()
+        print("Account has been deleted")
     except Exception as e:
         print(e)
-
     finally:
         db_close(db, cur)
     
     return#Exit the function
-
-
 def loan_conf():
     db, cur = con1()
     try:
@@ -210,20 +158,22 @@ Total Repayment value after {i[6]} years: {i[5]}""",end="\n\n")
         else:
             print("there are no awaitng loan approvals")
             return
-
         aff=int(input("Enter the account number to approve loan: "))
         cur.execute("SELECT * FROM LOAN WHERE USER_ACCOUNT_NUMBER = %s",(aff,))
         u=cur.fetchone()
         p=float(u[2])
         t=int(u[6])
-        annual_rate=float(input("Enter the annual intrest rate: "))*100#percentaging
-        n=int(input("Enter the number of payments done over the lifetime of the loan(if any):"))
-        intrest=float(p*annual_rate*t)#already percentaged
-        annual_pay=p*((intrest/12)/ 1 - (1+(intrest/12))**-n)###formula for finding the repayment value
+        annual_rate=float(input("Enter the annual intrest rate (%): "))
+        n=int(input("Enter the total number of monthly payments: "))
+        r=(annual_rate/100)/12#monthly interest rate
+        if r==0:
+            emi=p/n
+        else:
+            emi=p*r*(1+r)**n/((1+r)**n-1)#standard EMI formula
+        total_repayment=emi*n
         qa="UPDATE LOAN SET APPROVAL = %s, INTREST_RATE = %s,REPAYMENT = %s  WHERE USER_ACCOUNT_NUMBER = %s"
-        cur.execute(qa, ("YUP!", intrest, annual_pay, aff))
-        qb="UPDATE LOAN SET DATE_OF_CONFIRMATION = NOW()"
-        cur.execute(qb)
+        cur.execute(qa, ("YUP!", annual_rate, total_repayment, aff))
+        cur.execute("UPDATE LOAN SET DATE_OF_CONFIRMATION = NOW() WHERE USER_ACCOUNT_NUMBER = %s",(aff,))
         cur.execute("SELECT * FROM LOAN WHERE USER_ACCOUNT_NUMBER = %s",(aff,))
         u=cur.fetchone()
         print(u,"<-Loan details has been updated")
@@ -232,45 +182,30 @@ Total Repayment value after {i[6]} years: {i[5]}""",end="\n\n")
         print(e)
     finally:
         db_close(db, cur)
-
-
 def admin_transaction_viewer():
     
     db,cur=con1()
-
     cur.execute("SELECT * FROM widthdral_and_deposit")
     r=tuple(cur.fetchall())
     
     if r!=tuple():
-        if is_nested(r):
-            for i in r:
-                print(f"""\n\nAccount number: {i[0]}
+        for i in r:
+            print(f"""\n\nAccount number: {i[0]}
 Widthdral: {i[1]}
 Deposit: {i[2]}
 Date of transaction: {i[3]}
 Balance Remaining: {i[4]}\n\n""")
-        elif not is_nested(r):
-            print(f"""\n\nAccount number: {[0]}
-Widthdral: {r[1]}
-Deposit: {r[2]}
-Date of transaction: {r[3]}
-Balance Remaining: {r[4]}
-Date and time of transactions: {r[5]}\n\n""")
-
     else:
         print("There are no transactions yet!")
         return
     que=input("Enter y to update transaction and n to not do that...")
-
     if que=='y':
         try:
             i=input("Enter the account number you want to update balance of: ")
             cur.execute("select BALANCE from USERS where ACCOUNT_NUMBER=%s",(i,))
             
             ba = cur.fetchone()[0]
-
             z=float(0)
-
             print(f"Remaining balance is: {ba}")
             
             w=float(input("Enter widthdral ammount: "))
@@ -287,7 +222,7 @@ Date and time of transactions: {r[5]}\n\n""")
             
             ba=ba-w+d
             
-            q="INSERT INTO widthdral_and_deposit (USER_ACCOUNT_NUMBER,WITHDRAWL,DEPOSIT,Date,REMAINING_BALANCE) VALUES(%s,%s,%s,NOW(),%s)"
+            q="INSERT INTO widthdral_and_deposit (USER_ACCOUNT_NUMBER,WITHDRAWL,DEPOSIT,Date_and_time,REMAINING_BALANCE) VALUES(%s,%s,%s,NOW(),%s)"
             cur.execute(q,(i,w,d,ba))
             cur.execute("UPDATE USERS SET BALANCE=%s WHERE ACCOUNT_NUMBER=%s",(ba,i))
             print("changes have been made")
@@ -306,24 +241,20 @@ Date and time of transactions: {r[5]}\n\n""")
         finally:
             db.commit()
             db_close(db,cur)
-
     else:
         return
-
 def feedback_viewer():
     db, cur = con1()
     cur.execute("SELECT * FROM FEEDBACK")
     r=cur.fetchall()
-    if is_nested(r):
+    if not r:
+        print("No feedback yet!")
+    else:
         for i in r:
             print("Account number:",i[0])
             print("Feedback given:",i[1])
-    else:
-        print("Account number:",r[0])
-        print("Feedback given:",r[1])
-
+    db_close(db, cur)
 ### User Menu stuff goes here ###
-
 def view_acc():
     db,cur=con1()
     acc=int(input("Enter account number to see data: "))
@@ -340,9 +271,7 @@ Number: {user_data[4]}
 Balance: {user_data[5]}\n\n""")
     else:
         print("User not found.")
-
     db_close(db, cur)
-
 def add_user():
     db,cur = con1()#unpacking the con1() function
     try:
@@ -351,7 +280,6 @@ def add_user():
         e=input("Enter E.Mail address(the only valid Email is [gmail.com] for now... ): ")
         pnum=input("Enter phone number: ")
         ball=float(input("Enter balance amount: "))
-        validation=e.split()
         v=""
         for i in e:#checking for valid email(Starts)
             if i==" ":
@@ -367,18 +295,15 @@ def add_user():
             cur.execute("SELECT LAST_INSERT_ID()")
             rem=cur.fetchone()
             print("your account number is,",rem[0])
-            cur.execute("UPDATE USERS SET DATE_OF_OPENING=(NOW())")
+            cur.execute("UPDATE USERS SET DATE_OF_OPENING=(NOW()) WHERE ACCOUNT_NUMBER=%s",(rem[0],))
             db.commit()
             
     except Exception as e:
         print(e)
     finally:
         db_close(db,cur)
-
-
 def update_user():
     db, cur = con1()  # Unpacking the con1() function
-
     acc = int(input("Enter account number: "))
     
     # Check if the account exists
@@ -391,13 +316,11 @@ def update_user():
     e = input("Enter new E.Mail address (leave blank to keep unchanged): ").strip()
     a = input("Enter new Address (leave blank to keep unchanged): ").strip()
     pnum = input("Enter new Phone number (leave blank to keep unchanged): ").strip()
-
     if pnum:
         try:
             pnum = int(pnum)
         except Exception as q:
             print(q)
-
     # Creating a dictionary to store the fields to be updated
     updates = {}
     if n:# if n is given
@@ -408,18 +331,15 @@ def update_user():
         updates["ADDRESS"] = a
     if pnum:
         updates["NUMBER"] = pnum
-
     # If no updates are provided, inform the user and exit
     if not updates:
         print("No updates provided. Exiting.")
         return
-
     # Dynamically building the SQL query
     try:
         set_clause = ", ".join([f"{key}=%s" for key in updates.keys()])
         query = f"UPDATE USERS SET {set_clause} WHERE ACCOUNT_NUMBER=%s"
         values = list(updates.values()) + [acc]
-
         # Executing the query
         cur.execute(query, values)
         db.commit()
@@ -429,9 +349,6 @@ def update_user():
         print(f"An error occurred: {e}")
     finally:
         db_close(db, cur)
-
-
-
 def give_feedback():
     db, cur = con1()
     acc = int(input("Enter your account number: "))
@@ -442,8 +359,6 @@ def give_feedback():
     print("Feedback submitted successfully.")
     db.commit()
     db_close(db, cur)
-
-
 def apply_for_loan():
     try:
         db, cur = con1()
@@ -456,15 +371,12 @@ def apply_for_loan():
             cur.execute(qa, (acc, loan_amount, loan_bearer , t))
             print("Loan application submitted successfully.")
             db.commit()
-
         else:
             print("No accounts found")
     except Exception as e:
         print(e)
     finally:
         db_close(db, cur)
-
-
 def view_loans():
     db, cur = con1()
     acc = int(input("Enter your account number to view loans: "))
@@ -489,10 +401,7 @@ Total Repayment value after {i[6]} years: {i[5]}\n\n""")
         print("No loans found for this account number.")
     
     db_close(db, cur)
-
 def acc_transaction(i):
-    transaction_info = {}
-    
     db, cur = con1()
     
     # Fetch current balance
@@ -501,63 +410,43 @@ def acc_transaction(i):
     
     if result is None:
         print("Account not found.")
+        db_close(db, cur)
         return
-
     ba = result[0]
     print(f"Remaining balance: {ba}")
-
     try:
         w_input = input("Enter withdrawal amount (leave blank for no withdrawal): ").strip()
         d_input = input("Enter deposit amount (leave blank for no deposit): ").strip()
-
         w = float(w_input) if w_input else 0
         d = float(d_input) if d_input else 0
-
         print(f"Withdrawal amount: {w}")
         print(f"Deposit amount: {d}")
-
         if w == 0 and d == 0:
             print("No transaction performed.")
             return
-
         # Check if withdrawal is possible
         new_balance = ba - w + d
         if new_balance < 0:
             print("Transaction failed: Insufficient balance.")
             return
-
-        # Update transaction info
-        if w > 0:
-            transaction_info["WITHDRAWL"] = w
-        if d > 0:
-            transaction_info["DEPOSIT"] = d
-
-        # Update withdrawal_and_deposit table
-        if transaction_info:
-            set_clause = ", ".join([f"{key}=%s" for key in transaction_info.keys()])
-            query = f"UPDATE widthdral_and_deposit SET {set_clause} WHERE USER_ACCOUNT_NUMBER = %s"
-            values = list(transaction_info.values()) + [i]
-            cur.execute(query, values)
-
+        # Record the transaction in the history table
+        q = """INSERT INTO widthdral_and_deposit
+                (USER_ACCOUNT_NUMBER, WITHDRAWL, DEPOSIT, Date_and_time, REMAINING_BALANCE)
+                VALUES (%s, %s, %s, NOW(), %s)"""
+        cur.execute(q, (i, w, d, new_balance))
         # Update user balance
         cur.execute("UPDATE USERS SET BALANCE = %s WHERE ACCOUNT_NUMBER = %s", (new_balance, i))
-
         db.commit()
         print("Transaction successful. New balance:", new_balance)
-
     except ValueError:
         print("Invalid input. Please enter a valid number.")
-
     except Exception as e:
         print(f"An error occurred: {e}")
-
     finally:
         db_close(db, cur)
-
 def balance_management():
     
     db,cur=con1()
-
     try:
         
         i=int(input("Enter your account number: "))
@@ -582,33 +471,19 @@ def balance_management():
                 else:
                     pass
                 
-            elif p!=tuple():
-                if is_nested(p):
-                    for r in p:
-                        print(f"""\n\nAccount number: {r[0]}
+            else:
+                for r in p:
+                    print(f"""\n\nAccount number: {r[0]}
 Widthdral: {r[1]}
 Deposit: {r[2]}
 Date of transaction: {r[3]}
 Remaining balance: {r[4]}\n\n""")
-                        
-                    q=input("Do you want to make a new transaction history??(y/n): ").lower()
-                    if q=='y':
-                        acc_transaction(i)
-                    else:
-                        pass
-                
-                else:#if not nested
-                    print(f"""\n\nAccount number: {p[0]}
-Widthdral: {p[1]}
-Deposit: {p[2]}
-Date of transaction: {p[3]}
-Remaining balance: {p[4]}\n\n""")
-
-                    q=input("Do you want to make a new transaction history??(y/n): ").lower()
-                    if q=='y':
-                        acc_transaction(i)
-                    else:
-                        pass
+                    
+                q=input("Do you want to make a new transaction history??(y/n): ").lower()
+                if q=='y':
+                    acc_transaction(i)
+                else:
+                    pass
         else:
             print("There is no known user of that account")
     except Exception as e:
@@ -616,10 +491,7 @@ Remaining balance: {p[4]}\n\n""")
     finally:
         db.commit()
         db_close(db,cur)
-
-
 ### The actual menu part of the User menu ###
-
 def umenu():#User menu
     while True:
         print("*"*57)
@@ -627,7 +499,6 @@ def umenu():#User menu
                     //========\\
                     || USER_MENU ||
                     \\========//
-
                     """)
         print("*"*57)
         print("""1. Add user
@@ -640,34 +511,27 @@ def umenu():#User menu
 8. Exit""")
         print("Enter the numbers (1,2,3,4,5,6,7,8) to choose...")
         ch=input("Enter choice: ")
-
         if ch=='1':
             add_user()
-
         elif ch=='2':#was a simple implimentation so i did it here(and i changed it...)
             view_acc()
         
         elif ch=='3':
             update_user()
-
         elif ch=='4':
             apply_for_loan()
         
         elif ch=='5':
             give_feedback()
-
         elif ch=='6':
             view_loans()
-
         elif ch=='7':
             balance_management()
         
         else:
             print("Exiting...")
             break
-
 ### Admin menu ###
-
 def admenu():
     while True:
         print("*"*57)
@@ -694,7 +558,6 @@ e. Exit""")
         else:
             print("Exiting...")
             break
-
 ### This is the area where the main menu is run ###
 def mmenu():
     while True:
@@ -703,7 +566,6 @@ def mmenu():
         if ch=='1':
             umenu()
         elif ch=='2':
-            print("Default password is 1234")
             pa=input("Enter password: ")
             admin=input("Enter name: ")
             if pa=="1234":
@@ -714,11 +576,8 @@ def mmenu():
         elif ch=='3':
             print("Bye!")
             break
-
-
 try:#Tries to read from the file named "confirmation.txt" which will help us determine that if the code has
     # been run before or not and thus help us save time...
-
     with open(file,'r+') as f:
         fr=f.read()
         if fr!="c":
@@ -729,7 +588,6 @@ try:#Tries to read from the file named "confirmation.txt" which will help us det
         elif fr=="c":
             con1()#only connect to the database as this program has run once atleast
             mmenu()
-
 except FileNotFoundError:#if the file does not exist this except block code will make the file
     print("""File was not found...
 Resolving the error""")#and run the main connection function
